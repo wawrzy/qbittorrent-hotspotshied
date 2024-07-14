@@ -1,0 +1,47 @@
+version: '3.7'
+
+services:
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=openvpn
+      - OPENVPN_CUSTOM_CONFIG=/gluetun/custom.conf
+      - OPENVPN_USER=${OPENVPN_USER}
+      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+      - DNS_KEEP_NAMESERVER=on
+      - HTTPPROXY=on
+      # - FIREWALL=off
+    volumes:
+      - ${OPENVPN_CONFIG}:/gluetun/custom.conf:ro
+    ports:
+      - 8080:8080/tcp
+      - 8388:8388/tcp
+      - 8388:8388/udp
+      - 6881:6881/tcp
+      - 6881:6881/udp
+      - 8888:8888/tcp # HTTP proxy
+
+  qbittorrent-nox:
+    container_name: qbittorrent-nox
+    environment:
+      - QBT_EULA=accept
+      - QBT_WEBUI_PORT=8080
+    image: qbittorrentofficial/qbittorrent-nox:latest
+    read_only: true
+    stop_grace_period: 30m
+    tmpfs:
+      - /tmp
+    tty: true
+    volumes:
+      - ${QBITTORRENT_CONFIG}:/config
+      - ${QBITTORRENT_DOWNLOADS}:/downloads
+    network_mode: service:gluetun
+    depends_on:
+      - gluetun
